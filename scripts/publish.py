@@ -210,6 +210,7 @@ def main():
     def record(text):
         with summary.open("a", encoding="utf-8") as stream:
             stream.write(text + "\n")
+        print(text, flush=True)
 
     try:
         sha = os.environ.get("GITHUB_SHA", "")

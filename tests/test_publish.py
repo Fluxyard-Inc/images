@@ -171,6 +171,8 @@ class PublisherCLI(unittest.TestCase):
         summary = Path(self.env["GITHUB_STEP_SUMMARY"])
         self.assertTrue(summary.is_file(), "publisher must provide its bounded outcome receipt")
         self.assertNotIn(b"synthetic-job-token", result.stdout + result.stderr + summary.read_bytes())
+        self.assertEqual(result.stdout.decode(), summary.read_text().removeprefix("## Image publication\n\n"),
+                         "normal logs must preserve only the safe receipt, including partial failures")
         self.state = json.loads((self.tools / "state.json").read_text())
         if "private_config" in self.state:
             self.assertFalse(Path(self.state["private_config"]).exists(), "private client configuration must be removed")

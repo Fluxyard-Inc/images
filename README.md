@@ -36,7 +36,7 @@ Build the reviewed recipes with immutable inputs. Inspect actual image source/
 revision labels and required tools/dependencies, and retain distribution notices.
 The custom image must derive from the newly published curated manifest digest,
 not a local ID or mutable tag. Record source, input pins, run and manifest digests
-in the workflow summary, including partial success before a later failure.
+in the workflow summary and normal logs, including partial success before a later failure.
 Public package visibility is a separate first-publication setting; a private
 package is not anonymous-pull success. Require fresh credential-free exact-digest
 pulls before catalog activation; do not weaken that check to make a run green.
