@@ -3,9 +3,55 @@
 Public container recipes and portable GPU examples maintained by Fluxyard Inc.
 for fluxyard. This repository does not contain the Control Plane or Worker.
 
-Status: source preparation only. This change publishes no image or runnable
-catalog and supplies no managed-workspace, GPU, network or storage acceptance.
+Status: publication automation is being prepared; no image is published yet.
+This repository supplies no managed-workspace, GPU, network or storage acceptance.
 Local tags and image IDs below are not published registry manifest digests.
+
+## Publication contract (#3)
+
+First publication is an explicit manual dispatch with a full source SHA.
+Subsequent publication may also follow an explicitly published GitHub Release.
+Ordinary PRs, main pushes and schedules never build or push images. Each event
+uses one Linux amd64 job capped at 30 minutes, serialized across both triggers,
+without a matrix, automatic retry, cache upload or artifact upload. Never cancel
+an active publisher just because another request arrives; stale queued sources
+must fail before publication. This is separate from the private product's CI.
+
+Only this repository's reviewed current main is eligible. Match event SHA,
+workflow SHA, checkout and remote main; a manual dispatch additionally matches
+its expected SHA, and a release matches its actual tag target. Recheck before
+publishing after a build. Source changes go through a focused PR and independent
+exact-head specification/standards reviews. The first hosted publication occurs
+after these local checks; its success is image-build evidence, not GPU acceptance.
+
+Targets are `ghcr.io/fluxyard-inc/workspace` and
+`ghcr.io/fluxyard-inc/workspace-custom`, tagged `pilot-<full-source-sha>` only.
+Never overwrite a tag or publish `latest`. Check both tags before effects and
+each again before its push; distinguish an authenticated missing manifest from
+authentication, rate-limit, network or server failures. These checks are not an
+atomic registry immutability guarantee. Stop on uncertainty or partial publication
+and inspect the recorded outcome before any retry; do not rebuild successful tags.
+
+Build the reviewed recipes with immutable inputs. Inspect actual image source/
+revision labels and required tools/dependencies, and retain distribution notices.
+The custom image must derive from the newly published curated manifest digest,
+not a local ID or mutable tag. Record source, input pins, run and manifest digests
+in the workflow summary, including partial success before a later failure.
+Public package visibility is a separate first-publication setting; a private
+package is not anonymous-pull success. Require fresh credential-free exact-digest
+pulls before catalog activation; do not weaken that check to make a run green.
+
+Use only the job's short-lived `GITHUB_TOKEN`, with contents read/packages write.
+Keep credentials out of command arguments, build inputs, image layers, output
+and test fixtures. Bound subprocess/API time, capture and cleanup, reject unsafe
+redirects, and use private temporary client configuration. Never export ambient
+Docker/CLI credentials. Publication does not activate templates or deploy fluxyard.
+
+Test the publisher's command boundary with synthetic event/registry/Docker
+outcomes for exact revision, duplicate/changed tags, partial failure and secret-safe
+refusal. Replace only those true external boundaries; no private product fixture
+export or new test framework. Real first publication and anonymous pulls remain
+required evidence. Missing or skipped GPU/root gates never establish acceptance.
 
 ## Build recipes
 
