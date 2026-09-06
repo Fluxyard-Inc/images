@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import selectors
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -191,7 +192,31 @@ def absent(name, tag, token, actor):
             "tag-exists-or-unavailable")
 
 
-def manifest(name, tag, image_id, token, actor):
+def build_digests(path):
+    try:
+        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), "rb") as stream:
+            require(stat.S_ISREG(os.fstat(stream.fileno()).st_mode), "build-metadata")
+            raw = stream.read(LIMIT + 1)
+        require(0 < len(raw) <= LIMIT, "build-metadata")
+        metadata = json.loads(raw)
+        config_digest = metadata["containerimage.config.digest"]
+        image_digest = metadata["containerimage.digest"]
+        require(re.fullmatch(DIGEST, config_digest) and re.fullmatch(DIGEST, image_digest), "build-metadata")
+        if "containerimage.descriptor" not in metadata:
+            # Docker's classic moby exporter reports the config ID in both fields.
+            require(image_digest == config_digest, "build-metadata")
+        else:
+            descriptor = metadata["containerimage.descriptor"]
+            require(descriptor["digest"] == image_digest and
+                    descriptor["annotations"]["config.digest"] == config_digest and
+                    descriptor["mediaType"] in ("application/vnd.oci.image.manifest.v1+json",
+                                                 "application/vnd.docker.distribution.manifest.v2+json"), "build-metadata")
+        return config_digest, image_digest
+    except (OSError, ValueError, KeyError, TypeError):
+        raise Refusal("build-metadata") from None
+
+
+def manifest(name, tag, config_digest, token, actor):
     status, headers, body = registry(name, tag, token, actor)
     require(status == 200, "published-manifest-unverified")
     digest = "sha256:" + hashlib.sha256(body).hexdigest()
@@ -199,7 +224,7 @@ def manifest(name, tag, image_id, token, actor):
     value = json.loads(body)
     require(value.get("schemaVersion") == 2 and value.get("mediaType") in
             ("application/vnd.oci.image.manifest.v1+json", "application/vnd.docker.distribution.manifest.v2+json")
-            and value.get("config", {}).get("digest") == image_id, "published-manifest-unverified")
+            and value.get("config", {}).get("digest") == config_digest, "published-manifest-unverified")
     return digest
 
 
@@ -276,12 +301,14 @@ def main():
             published = {}
             for name in NAMES:
                 image = "ghcr.io/fluxyard-inc/" + name + ":" + tag
+                metadata_path = directory / (name + "-build.json")
                 build = docker + ["build", "--platform", "linux/amd64", "--provenance=false", "--label",
-                                  "org.opencontainers.image.revision=" + sha, "-t", image]
+                                  "org.opencontainers.image.revision=" + sha, "--metadata-file", str(metadata_path), "-t", image]
                 if name == "workspace-custom":
                     build += ["-f", "custom/Dockerfile", "--build-arg",
                               "WORKSPACE_IMAGE=ghcr.io/fluxyard-inc/workspace@" + published["workspace"]]
                 command(build + ["-"], archive, timeout=900, limit=8 * LIMIT, reason="image-build")
+                config_digest, image_digest = build_digests(metadata_path)
                 inspection = json.loads(command(docker + ["image", "inspect", image]))
                 require(len(inspection) == 1, "image-validation")
                 value = inspection[0]
@@ -289,7 +316,9 @@ def main():
                 require(value["Os"] == "linux" and value["Architecture"] == "amd64" and
                         labels.get("org.opencontainers.image.source") == SOURCE and
                         labels.get("org.opencontainers.image.revision") == sha and
-                        not value["Config"].get("Volumes") and re.fullmatch(DIGEST, value["Id"]), "image-validation")
+                        not value["Config"].get("Volumes") and
+                        value["Id"] in (config_digest, image_digest), "image-validation")
+                record(name + ": built config `" + config_digest + "`; exported image `" + image_digest + "`")
                 container = command(docker + ["create", "--network=none", "--read-only", "--user=65532:65532",
                     "--cap-drop=ALL", "--security-opt=no-new-privileges", "--memory=2g", "--pids-limit=64",
                     "--tmpfs=/tmp:rw,noexec,nosuid,nodev,size=67108864", "--workdir=/tmp", "--no-healthcheck",
@@ -305,7 +334,7 @@ def main():
                 absent(name, tag, token, actor)
                 record(name + ": push-started; tag `" + tag + "`; inspect this tag before any retry")
                 command(docker + ["push", image], timeout=600, limit=8 * LIMIT, reason="push-outcome-unknown")
-                digest = manifest(name, tag, value["Id"], token, actor)
+                digest = manifest(name, tag, config_digest, token, actor)
                 published[name] = digest
                 record(name + ": published `ghcr.io/fluxyard-inc/" + name + "@" + digest + "`")
             for name in NAMES:

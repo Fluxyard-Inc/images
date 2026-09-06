@@ -34,6 +34,12 @@ and inspect the recorded outcome before any retry; do not rebuild successful tag
 
 Build the reviewed recipes with immutable inputs. Inspect actual image source/
 revision labels and required tools/dependencies, and retain distribution notices.
+Use [native build metadata](https://docs.docker.com/reference/cli/docker/buildx/build/#write-build-result-metadata-to-a-file---metadata-file),
+bounded to 2 MiB, to bind image inspection to the build's config or manifest
+identity before pushing. Verify the remote manifest against the build config
+digest; Docker image stores do not all expose that digest as image `Id`.
+The classic exporter reports the same config ID in both native digest fields
+without a descriptor; descriptor-bearing output must agree with both digests.
 The custom image must derive from the newly published curated manifest digest,
 not a local ID or mutable tag. Record source, input pins, run and manifest digests
 in the workflow summary and normal logs, including partial success before a later failure.
