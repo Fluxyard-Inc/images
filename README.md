@@ -15,11 +15,14 @@ wheels are version/hash-pinned in [requirements.lock](requirements.lock).
 Pins support reproducible inputs, not a vulnerability-free guarantee.
 
 Build from a reviewed, clean checkout at the repository root. Use a fresh Docker
-client configuration so anonymous builds do not consult an existing registry
-login or credential helper:
+client configuration with an explicit credential-free `auths` entry and unset
+Docker's environment auth override. An empty directory alone can auto-select a
+system credential helper:
 
 ```sh
 image_client_config=$(mktemp -d)
+printf '%s\n' '{"auths":{"https://index.docker.io/v1/":{}}}' > "$image_client_config/config.json"
+unset DOCKER_AUTH_CONFIG
 image_source_revision=$(git rev-parse HEAD)
 docker --config "$image_client_config" build --platform linux/amd64 \
   --label "org.opencontainers.image.revision=$image_source_revision" \
