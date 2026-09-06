@@ -3,7 +3,7 @@
 Public container recipes and portable GPU examples maintained by Fluxyard Inc.
 for fluxyard. This repository does not contain the Control Plane or Worker.
 
-Status: publication automation is being prepared; no image is published yet.
+Status: bounded publication automation is included; no image is published yet.
 This repository supplies no managed-workspace, GPU, network or storage acceptance.
 Local tags and image IDs below are not published registry manifest digests.
 
@@ -20,8 +20,8 @@ must fail before publication. This is separate from the private product's CI.
 Only this repository's reviewed current main is eligible. Match event SHA,
 workflow SHA, checkout and remote main; a manual dispatch additionally matches
 its expected SHA, and a release matches its actual tag target. Recheck before
-publishing after a build. Source changes go through a focused PR and independent
-exact-head specification/standards reviews. The first hosted publication occurs
+publishing after a build. Source changes follow the internal exact-commit review
+and direct-main policy below; a PR is not required. The first hosted publication occurs
 after these local checks; its success is image-build evidence, not GPU acceptance.
 
 Targets are `ghcr.io/fluxyard-inc/workspace` and
@@ -52,6 +52,35 @@ outcomes for exact revision, duplicate/changed tags, partial failure and secret-
 refusal. Replace only those true external boundaries; no private product fixture
 export or new test framework. Real first publication and anonymous pulls remain
 required evidence. Missing or skipped GPU/root gates never establish acceptance.
+
+### Running the publisher
+
+After the exact commit's local checks and both internal reviews pass, push it
+normally to main. First publication uses Actions -> Publish pilot images ->
+Run workflow, main, with that full commit in `expected_sha`. Subsequent explicit
+GitHub Releases at current main may trigger the same job. A release for an
+already published source stops at the existing tag; it is not a rebuild request.
+
+Run `python3 -B tests/test_publish.py` and `actionlint .github/workflows/publish.yml`
+locally before delivery. The checks use real temporary Git repositories and
+inert registry/Docker commands, not real credentials, builds or GPU workloads.
+The first actual hosted publication supplies the image-build evidence.
+
+The workflow summary records each successful push immediately. If it stops at
+`public-visibility-pending`, both images may already exist privately: make their
+packages public through GitHub's documented package settings, then independently
+verify the recorded exact digests with a fresh credential-free client. Do not
+rerun publication to change visibility. Any unknown push outcome needs registry
+inspection before another attempt; no automated retries or successful-tag rebuilds.
+
+Limits: 28 minutes for the publisher inside the 30-minute job; 30 seconds per HTTP
+request, 15 minutes per build, 10 minutes per push/pull, and 90 seconds for each
+CPU-only image check, all within that total. Combined command capture is 2 MiB
+(16 MiB for build/push/pull); reviewed build context and event input are each
+capped at 2 MiB. Exceeding a bound stops publication. Validation containers are
+removed by exact returned ID with a separate 15-second cleanup allowance, and
+temporary client configuration is removed on normal success or failure. The
+disposable hosted runner owns build layers; no shared Docker pruning is used.
 
 ## Build recipes
 
@@ -177,8 +206,8 @@ trigger image publication, deployment or additional CI runs.
 This repository is the canonical source for these recipes and examples. Review
 changes here; record the clean source commit, build inputs and resulting registry
 manifest digest together. Both recipes identify this repository with the OCI
-source label. Publishing an image or adding build automation requires separate
-approval; this change adds neither. Source inspection does not audit cached
+source label. The bounded publisher above has owner approval; additional targets,
+triggers or deployment still require separate approval. Source inspection does not audit cached
 image layers or establish deployment compatibility.
 
 No project-wide source license has been selected. Public visibility is not a

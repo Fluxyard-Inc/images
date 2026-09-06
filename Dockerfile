@@ -37,6 +37,7 @@ ENV HOME=/workspace \
     PYTHONUNBUFFERED=1
 
 COPY examples /opt/fluxyard/examples
+COPY THIRD_PARTY.md /opt/fluxyard/THIRD_PARTY.md
 
 # Runtime mounts empty quota scratch here with volume-nocopy. Bake code under
 # /opt/fluxyard or transfer it with SFTP; never put required image files here.
