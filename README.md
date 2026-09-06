@@ -3,7 +3,8 @@
 Public container recipes and portable GPU examples maintained by Fluxyard Inc.
 for fluxyard. This repository does not contain the Control Plane or Worker.
 
-Status: bounded publication automation is included; no image is published yet.
+Status: bounded publication automation is included; successful publication and
+anonymous pulls are not yet established.
 This repository supplies no managed-workspace, GPU, network or storage acceptance.
 Local tags and image IDs below are not published registry manifest digests.
 
@@ -34,12 +35,11 @@ and inspect the recorded outcome before any retry; do not rebuild successful tag
 
 Build the reviewed recipes with immutable inputs. Inspect actual image source/
 revision labels and required tools/dependencies, and retain distribution notices.
-Use [native build metadata](https://docs.docker.com/reference/cli/docker/buildx/build/#write-build-result-metadata-to-a-file---metadata-file),
-bounded to 2 MiB, to bind image inspection to the build's config or manifest
-identity before pushing. Verify the remote manifest against the build config
-digest; Docker image stores do not all expose that digest as image `Id`.
-The classic exporter reports the same config ID in both native digest fields
-without a descriptor; descriptor-bearing output must agree with both digests.
+Bind digests using the bounded native image inspection response before pushing.
+The classic image store exposes the config digest as `Id` without `Descriptor`.
+For descriptor-bearing images, require a single-image manifest matching `Id`
+and its `config.digest` annotation. The remote config must match; when inspection
+supplies a manifest identity, the remote manifest must match that digest too.
 The custom image must derive from the newly published curated manifest digest,
 not a local ID or mutable tag. Record source, input pins, run and manifest digests
 in the workflow summary and normal logs, including partial success before a later failure.

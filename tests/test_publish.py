@@ -24,7 +24,7 @@ assert "AWS_SECRET_ACCESS_KEY" not in os.environ and "HTTP_PROXY" not in os.envi
 state.setdefault("calls", []).append([tool] + args)
 def save(): path.write_text(json.dumps(state))
 def manifest_body(kind):
-    return json.dumps({"schemaVersion": 2, "mediaType": "application/vnd.oci.image.manifest.v1+json", "config": {"digest": "sha256:" + kind * 64}, "layers": []}).encode()
+    return json.dumps({"schemaVersion": 2, "mediaType": state.get("media_type", "application/vnd.oci.image.manifest.v1+json"), "config": {"digest": "sha256:" + kind * 64}, "layers": []}).encode()
 def response(status, value, digest=None):
     body = value if isinstance(value, bytes) else json.dumps(value).encode()
     print("HTTP/1.1 " + str(status) + " Fixture\r")
@@ -59,6 +59,10 @@ if tool == "curl":
         response(status, {"errors": [{"code": state.get("missing_code", "MANIFEST_UNKNOWN")}]})
     config = state.get("manifest_config") or ("d" if name.endswith("custom") else "c")
     body = manifest_body(config)
+    if state.get("remote_other_layers"):
+        changed = json.loads(body)
+        changed["layers"] = [{"digest": "sha256:" + "f" * 64}]
+        body = json.dumps(changed).encode()
     response(200, body, "sha256:" + ("f" * 64 if state.get("bad_manifest_digest") else hashlib.sha256(body).hexdigest()))
 if tool == "docker":
     while args[0] == "--config": args = args[2:]
@@ -77,29 +81,6 @@ if tool == "docker":
         assert "unrelated.txt" not in names
         assert not any(b"synthetic-job-token" in archive.extractfile(m).read() for m in archive if m.isfile())
         state["built"] = True
-        if "--metadata-file" in args and not state.get("missing_metadata"):
-            kind = "d" if "custom/Dockerfile" in args else "c"
-            digest = "sha256:" + hashlib.sha256(manifest_body(kind)).hexdigest()
-            metadata = {"containerimage.config.digest": "sha256:" + kind * 64,
-                        "containerimage.digest": digest,
-                        "containerimage.descriptor": {"digest": digest, "mediaType": "application/vnd.oci.image.manifest.v1+json",
-                            "annotations": {"config.digest": "sha256:" + kind * 64}}}
-            if state.get("classic_metadata"):
-                metadata["containerimage.digest"] = metadata["containerimage.config.digest"]
-                del metadata["containerimage.descriptor"]
-            if state.get("metadata_missing_descriptor"):
-                del metadata["containerimage.descriptor"]
-            if state.get("metadata_config_mismatch"):
-                metadata["containerimage.config.digest"] = "sha256:" + "f" * 64
-            if state.get("metadata_manifest_mismatch"):
-                metadata["containerimage.digest"] = "sha256:" + "f" * 64
-            if state.get("metadata_bad_digest"):
-                metadata["containerimage.config.digest"] = "not-a-digest"
-            if state.get("metadata_missing_digest"):
-                del metadata["containerimage.config.digest"]
-            contents = "{" if state.get("malformed_metadata") else json.dumps(metadata)
-            if state.get("oversized_metadata"): contents += " " * (2 * 1024 * 1024)
-            pathlib.Path(args[args.index("--metadata-file") + 1]).write_text(contents)
         if "custom/Dockerfile" in args:
             base = next(a for a in args if a.startswith("WORKSPACE_IMAGE="))
             assert base.startswith("WORKSPACE_IMAGE=ghcr.io/fluxyard-inc/workspace@sha256:")
@@ -109,8 +90,18 @@ if tool == "docker":
         labels = {"org.opencontainers.image.source": "https://github.com/Fluxyard-Inc/images", "org.opencontainers.image.revision": state["sha"]}
         if state.get("bad_label"): labels["org.opencontainers.image.revision"] = "f" * 40
         identity = "sha256:" + (hashlib.sha256(manifest_body(kind)).hexdigest() if state.get("modern_store") else kind * 64)
-        if state.get("unrelated_inspect_id"): identity = "sha256:" + "f" * 64
-        print(json.dumps([{"Id": identity, "Os": "linux", "Architecture": "amd64", "Config": {"Labels": labels}}]))
+        value = {"Id": identity, "Os": "linux", "Architecture": "amd64", "Config": {"Labels": labels}}
+        if state.get("modern_store"):
+            value["Descriptor"] = {"digest": identity, "mediaType": state.get("media_type", "application/vnd.oci.image.manifest.v1+json"),
+                                   "annotations": {"config.digest": "sha256:" + kind * 64}}
+        if state.get("unrelated_inspect_id"): value["Id"] = "sha256:" + "f" * 64
+        if state.get("missing_config_digest"): value["Descriptor"]["annotations"] = {}
+        if state.get("bad_config_digest"): value["Descriptor"]["annotations"]["config.digest"] = "not-a-digest"
+        if state.get("null_descriptor"): value["Descriptor"] = None
+        if state.get("empty_descriptor"): value["Descriptor"] = {}
+        if state.get("invalid_legacy_id"): value["Id"] = "not-an-image-id"
+        if state.get("oversized_inspect"): value["padding"] = "x" * (2 * 1024 * 1024)
+        print(json.dumps([value]))
     elif args[0] == "create":
         assert "--network=none" in args and "--read-only" in args and "--user=65532:65532" in args
         print("e" * 64)
@@ -230,27 +221,26 @@ class PublisherCLI(unittest.TestCase):
         self.assertIn("not GPU acceptance or catalog activation", summary)
 
     def test_manifest_image_id_is_not_treated_as_config_digest(self):
-        self.state["modern_store"] = True
-        status, summary = self.publish()
-        self.assertEqual(status, 0, summary)
-        self.assertEqual(self.state["published"], ["workspace", "workspace-custom"])
-        self.assertEqual(summary.count("anonymous exact-digest pull verified"), 2)
+        for media_type in ("application/vnd.oci.image.manifest.v1+json", "application/vnd.docker.distribution.manifest.v2+json"):
+            with self.subTest(media_type=media_type):
+                self.state = {"sha": self.sha, "modern_store": True, "media_type": media_type}
+                status, summary = self.publish()
+                self.assertEqual(status, 0, summary)
+                self.assertEqual(self.state["published"], ["workspace", "workspace-custom"])
+                self.assertEqual(summary.count("anonymous exact-digest pull verified"), 2)
 
-    def test_classic_native_metadata_binds_the_config_image_id(self):
-        self.state["classic_metadata"] = True
-        status, summary = self.publish()
-        self.assertEqual(status, 0, summary)
-        self.assertEqual(self.state["published"], ["workspace", "workspace-custom"])
-
-    def test_invalid_build_metadata_or_unrelated_inspect_identity_prevents_push(self):
-        for key in ("missing_metadata", "malformed_metadata", "oversized_metadata",
-                    "metadata_config_mismatch", "metadata_manifest_mismatch", "metadata_bad_digest",
-                    "metadata_missing_digest", "metadata_missing_descriptor", "unrelated_inspect_id"):
+    def test_invalid_inspect_identity_prevents_push(self):
+        for key in ("missing_config_digest", "bad_config_digest", "null_descriptor",
+                    "empty_descriptor", "unrelated_inspect_id", "oversized_inspect", "invalid_legacy_id"):
             with self.subTest(failure=key):
-                self.state = {"sha": self.sha, "modern_store": True, key: True}
+                self.state = {"sha": self.sha, "modern_store": key != "invalid_legacy_id", key: True}
                 status, _ = self.publish()
                 self.assertEqual(status, 1)
                 self.assertFalse("published" in self.state, "invalid build evidence must stop before any push")
+        self.state = {"sha": self.sha, "modern_store": True, "media_type": "application/vnd.oci.image.index.v1+json"}
+        status, _ = self.publish()
+        self.assertEqual(status, 1)
+        self.assertFalse("published" in self.state)
 
     def test_private_packages_record_both_digests_without_claiming_anonymous_success(self):
         self.state["visibility"] = "private"
@@ -274,7 +264,8 @@ class PublisherCLI(unittest.TestCase):
         self.assertFalse(any(c[0] == "docker" for c in self.state.get("calls", [])))
 
     def test_rejects_changed_or_unverifiable_published_manifest(self):
-        for alteration in ({"manifest_config": "f"}, {"bad_manifest_digest": True}):
+        for alteration in ({"manifest_config": "f"}, {"bad_manifest_digest": True},
+                           {"modern_store": True, "remote_other_layers": True}):
             with self.subTest(alteration=alteration):
                 self.state = {"sha": self.sha, **alteration}
                 status, summary = self.publish()
