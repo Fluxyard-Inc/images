@@ -4,6 +4,14 @@
   Do not rename technical identifiers, paths or the GitHub organization.
 - Use `gh-zhentan` for this repository's issues and pull requests. Keep origin
   at `git@github-zhentan:Fluxyard-Inc/images.git`.
+- Until external collaborators join, PRs are optional in this repository. Use
+  focused commits, independent internal specification/standards reviews and
+  relevant checks at the exact candidate SHA before a normal fast-forward push
+  to main. Record the SHA and review/check results on the associated issue.
+  If the candidate changes, renew affected checks and both reviews. Never
+  force-push; integrate an advanced remote and review the new candidate first.
+  Revisit mandatory PRs when external collaborators join. This exception does
+  not change the private fluxyard repository's PR workflow or publication gates.
 - This repository is the canonical source for these image recipes and examples.
   Review changes here. Identify downstream copies by their public source commit;
   do not maintain silently divergent recipe copies.

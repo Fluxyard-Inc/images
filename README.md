@@ -161,6 +161,17 @@ manifest digest. In a managed workspace that enforces the fixed overrides,
 retrieve it before release. No privileged mode, extra mounts or public ports
 are justified by a compatibility failure.
 
+## Source review
+
+While this repository has no external collaborators, focused commits may be
+pushed directly to main after independent internal specification and standards
+reviews and relevant checks pass at the exact candidate SHA. Record that SHA
+and the review/check results on the associated issue. PRs are optional here;
+revisit mandatory PRs when external collaborators join. Do not force-push or
+reuse reviews after changing the candidate. This exception does not alter the
+private fluxyard repository's PR workflow. A source push does not authorize or
+trigger image publication, deployment or additional CI runs.
+
 ## Provenance and third-party components
 
 This repository is the canonical source for these recipes and examples. Review
