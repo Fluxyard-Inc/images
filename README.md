@@ -3,10 +3,25 @@
 Public container recipes and portable GPU examples maintained by Fluxyard Inc.
 for fluxyard. This repository does not contain the Control Plane or Worker.
 
-Status: bounded publication automation is included; successful publication and
-anonymous pulls are not yet established.
-This repository supplies no managed-workspace, GPU, network or storage acceptance.
-Local tags and image IDs below are not published registry manifest digests.
+Status: both Linux amd64 pilot images have verified anonymous exact-digest pulls
+and restricted CPU tool/package/notice checks. Managed-workspace, GPU, network
+and storage acceptance, catalog activation and production deployment remain pending.
+Local tags and image IDs in build examples are not published manifest digests.
+
+## Published pilot images
+
+Both images were built from source
+[`3219f88081071751085a49431c37f0aebe5ade27`](https://github.com/Fluxyard-Inc/images/commit/3219f88081071751085a49431c37f0aebe5ade27).
+The [original publication run](https://github.com/Fluxyard-Inc/images/actions/runs/34054927017)
+ended in failure; the [2026-09-06 verification receipt](https://github.com/Fluxyard-Inc/images/issues/3#issuecomment-5565419391)
+establishes the subsequent anonymous pulls and restricted CPU checks.
+
+- Curated: `ghcr.io/fluxyard-inc/workspace@sha256:33ede77bfb0474ea18b5feccd18e0ba584279912d1792d36fd88aeba9e5ba024`
+- Compatibility fixture: `ghcr.io/fluxyard-inc/workspace-custom@sha256:94b720ecece9e36c13aa627ad61bc3eba459a2f7db2d4fe0ba65f568af70670b`
+
+`workspace-custom` is a deliberately adversarial test fixture, not a normal
+renter image. Read [Custom compatibility fixture](#custom-compatibility-fixture)
+before using it.
 
 ## Publication contract (#3)
 
