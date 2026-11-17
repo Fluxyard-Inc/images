@@ -10,14 +10,22 @@ Local tags and image IDs in build examples are not published manifest digests.
 
 ## Published pilot images
 
-Both images were built from source
-[`3219f88081071751085a49431c37f0aebe5ade27`](https://github.com/Fluxyard-Inc/images/commit/3219f88081071751085a49431c37f0aebe5ade27).
-The [original publication run](https://github.com/Fluxyard-Inc/images/actions/runs/34054927017)
-ended in failure; the [2026-09-06 verification receipt](https://github.com/Fluxyard-Inc/images/issues/3#issuecomment-5565419391)
-establishes the subsequent anonymous pulls and restricted CPU checks.
+The current images were built from source
+[`a964291d49e88eb0d242b335ccacdee1bdb356dd`](https://github.com/Fluxyard-Inc/images/commit/a964291d49e88eb0d242b335ccacdee1bdb356dd).
+The [2026-11-17 publication run](https://github.com/Fluxyard-Inc/images/actions/runs/44042591153)
+passed source/config binding, restricted CPU dependency/tool/notice checks and
+anonymous exact-digest pulls for both images. These checks do not establish GPU
+generation quality, latency or downstream template activation.
 
-- Curated: `ghcr.io/fluxyard-inc/workspace@sha256:33ede77bfb0474ea18b5feccd18e0ba584279912d1792d36fd88aeba9e5ba024`
-- Compatibility fixture: `ghcr.io/fluxyard-inc/workspace-custom@sha256:94b720ecece9e36c13aa627ad61bc3eba459a2f7db2d4fe0ba65f568af70670b`
+- Curated: `ghcr.io/fluxyard-inc/workspace@sha256:a8217e30fea58ecef8fa0b4959e85a5ba24365238693d3593b6b3098e088c3b2`
+- Compatibility fixture: `ghcr.io/fluxyard-inc/workspace-custom@sha256:fc2f96bfe136a14b9070993d7dac8fcb7fb5ca0eb61ac992ee94f931fe8ac857`
+
+The earlier images built from
+[`3219f88081071751085a49431c37f0aebe5ade27`](https://github.com/Fluxyard-Inc/images/commit/3219f88081071751085a49431c37f0aebe5ade27)
+retain their [2026-09-06 verification receipt](https://github.com/Fluxyard-Inc/images/issues/3#issuecomment-5565419391).
+That receipt records recovery after the
+[original publication run failed](https://github.com/Fluxyard-Inc/images/actions/runs/34054927017).
+Existing deployments retain their selected image until explicitly upgraded.
 
 `workspace-custom` is a deliberately adversarial test fixture, not a normal
 renter image. Read [Custom compatibility fixture](#custom-compatibility-fixture)
@@ -105,11 +113,10 @@ disposable hosted runner owns build layers; no shared Docker pruning is used.
 
 ## Prompted image and video generation
 
-The source now supplies `fluxyard-generate`. **The published pilot digests above
-do not contain this command.** A new reviewed build, publication, anonymous pull
-and real GPU qualification are still required before a provider activates it.
-Source checks do not establish output quality, latency or managed-workspace
-compatibility.
+The published curated image above supplies `fluxyard-generate`. Real GPU
+qualification is still required before a provider activates it. The source and
+restricted CPU image checks do not establish output quality, latency or
+managed-workspace compatibility.
 
 Run these commands inside the workspace's authenticated SSH shell. They use the
 allocated local GPU and accept your prompt directly; no browser app, public port,
