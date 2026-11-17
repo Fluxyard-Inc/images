@@ -22,6 +22,25 @@ NVIDIA or other upstream endorsement. No project-wide source license is granted.
 - Models are not included in the image. The examples download the immutable
   revisions in `models.lock.json`; their linked model cards describe separate
   terms and limitations. Model permissions do not license the rest of the image.
+- The generation command adds Accelerate, psutil, SentencePiece, protobuf,
+  ImageIO and imageio-ffmpeg at the versions/hashes in `requirements.lock`.
+  Preserve their installed license notices. SentencePiece's wheel omits standalone
+  license files; its upstream release license and bundled third-party notices
+  are copied into `/opt/fluxyard/licenses/sentencepiece`, with provenance in
+  [licenses/sentencepiece/README.md](licenses/sentencepiece/README.md).
+  The imageio-ffmpeg Linux wheel
+  includes a compiled FFmpeg executable and its accompanying license material;
+  that executable has its own build configuration and terms, separate from
+  ImageIO's Python wrapper. Do not strip it or its notices from derived images.
+- Z-Image-Turbo declares Apache-2.0 in its pinned model card. LTX 0.9.6 distilled
+  2B uses the separately linked **LTX-Video Open Weights License 0.X**, with use
+  and redistribution conditions and an additional commercial-license provision
+  for organizations at or above its stated USD 10 million annual revenue threshold.
+  The pinned 0.9.5 configuration/text-encoder repository also includes Open RAIL-M
+  terms. These are not Apache grants. Review the exact accompanying terms before
+  deploying or redistributing the models; this inventory is not a determination
+  that a particular use is authorized. The downloader retains their license files
+  in the workspace cache and records the exact model references in each report.
 
 Do not remove or relabel upstream proprietary notices. A new base, package or
 model version requires reviewing its accompanying terms again before publication.

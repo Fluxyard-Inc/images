@@ -103,6 +103,118 @@ removed by exact returned ID with a separate 15-second cleanup allowance, and
 temporary client configuration is removed on normal success or failure. The
 disposable hosted runner owns build layers; no shared Docker pruning is used.
 
+## Prompted image and video generation
+
+The source now supplies `fluxyard-generate`. **The published pilot digests above
+do not contain this command.** A new reviewed build, publication, anonymous pull
+and real GPU qualification are still required before a provider activates it.
+Source checks do not establish output quality, latency or managed-workspace
+compatibility.
+
+Run these commands inside the workspace's authenticated SSH shell. They use the
+allocated local GPU and accept your prompt directly; no browser app, public port,
+remote inference API or SSH forwarding is needed:
+
+```sh
+fluxyard-generate image \
+  --prompt 'A small orange robot watering a rooftop garden at sunrise, cinematic lighting' \
+  --seed 23 --output /workspace/demo-image
+
+fluxyard-generate video \
+  --prompt 'A small orange robot waters a rooftop garden. Water sparkles in the warm sunrise as the camera moves slowly closer.' \
+  --image /workspace/demo-image/image.png \
+  --seed 23 --output /workspace/demo-video
+```
+
+Omit `--image` to generate video from text alone. The image preset produces a
+1024×1024 PNG. The video preset produces a silent 768×512 MP4 with 65 frames at
+24 fps (about 2.7 seconds). `--frames 33` makes a shorter preview; `--frames 97`
+makes about 4 seconds. An input image is converted to RGB and center-cropped to
+the video's aspect ratio. Describe both the scene and its motion in the prompt.
+Prompts are passed to the model as text, never evaluated as shell commands;
+quote them in the shell, as above.
+
+Each run requires a **new** output directory. It writes `image.png` or
+`video.mp4`, plus `result.json` only after successful completion. The report
+records the prompt, seed, immutable model references, runner hash, settings,
+GPU, preparation/generation/save times and output SHA256. Preparation also reports
+cache/download and model-load times separately. Keep prompts you do
+not wish to share out of shared reports. The seed is recorded for comparison;
+results are not promised to be bit-identical across hardware or library builds.
+These process timings are **not rental billing**: loading models and idle time
+can also be billable. Download artifacts with SFTP before explicitly releasing
+the rental; disconnecting SSH does not release it. An interrupted run retains
+its directory and possibly a partial artifact; retry into a new directory.
+
+### Model cache and resources
+
+Prefetch the pinned models before presenting a live demo:
+
+```sh
+fluxyard-generate download --mode all
+fluxyard-generate image --offline \
+  --prompt 'A watercolor painting of a lighthouse above a stormy sea' \
+  --output /workspace/offline-image
+```
+
+`download --mode image` and `download --mode video` cache only that mode. Models
+are downloaded anonymously into the normal Hugging Face cache under `/workspace`;
+the command neither needs nor uses a personal Hugging Face token. Downloads use
+explicit immutable revisions and allowlisted data files. No model repository
+Python is downloaded or executed. `--offline` refuses missing cached files.
+The first ordinary generation command can also download its models, so its
+preparation time includes any missing download and model loading. Prefetching
+caches disk files; it does not keep model weights resident in GPU memory.
+
+The current pins need approximately **32.9 GB for image weights and 25.4 GB for
+video weights/configuration** in decimal units. Plan for **80 GiB scratch,
+32 GiB system RAM and one 24-GiB-class NVIDIA GPU** for the combined demo. These
+are qualification targets, not measured minimums. The existing small-model
+template's 8-GiB scratch/RAM request is insufficient. The command uses bfloat16,
+model CPU offload, and video VAE tiling. It refuses CPU fallback and more than one
+visible GPU; it does not grant GPU access or choose the provider's allocation.
+GPU admission, memory isolation, scratch quota and network policy remain the
+provider's responsibility. Preserve CUDA/PyTorch pins until a separately reviewed
+upgrade. Cold download, warm load, GPU generation, quality and peak resource use
+must be measured separately on the intended hardware before promising speed.
+
+### Models and compatibility
+
+- Images use [Z-Image-Turbo](https://huggingface.co/Tongyi-MAI/Z-Image-Turbo/blob/f332072aa78be7aecdf3ee76d5c247082da564a6/README.md),
+  with its Apache-2.0 declaration and nine pipeline steps (eight model evaluations).
+- Videos use the official [LTX 0.9.6 distilled 2B checkpoint](https://huggingface.co/Lightricks/LTX-Video/blob/8984fa25007f376c1a299016d0957a37a2f797bb/README.md),
+  with pinned 0.9.5 architecture/tokenizer/text-encoder files. The checkpoint has
+  a separate [custom license](https://huggingface.co/Lightricks/LTX-Video/blob/8984fa25007f376c1a299016d0957a37a2f797bb/LTX-Video-Open-Weights-License-0.X.txt);
+  the configuration repository carries [Open RAIL-M terms](https://huggingface.co/Lightricks/LTX-Video-0.9.5/blob/e58e28c39631af4d1468ee57a853764e11c1d37e/ltx-video-2b-v0.9.5.license.txt).
+  Review these terms for the intended use and distribution before publication;
+  the LTX weights are not Apache-licensed. See [THIRD_PARTY.md](THIRD_PARTY.md).
+
+The video adapter binds the checkpoint's eight fixed sigmas and stochastic
+sampler to Diffusers 0.36's plain text/image-to-video pipelines. Passing custom
+timesteps to those pipelines also passes their default sigmas, which is rejected;
+the adapter replaces those sigmas at the scheduler boundary instead. It uses
+unshifted sigmas and the positive-noise prediction convention, matching the
+[upstream stochastic sampler](https://github.com/Lightricks/LTX-Video/blob/50f0aef1297574a4b29acbdb874e3a363a6d5f2e/ltx_video/schedulers/rf.py#L364).
+It seeds both the global torch RNG used by the stochastic sampler and the
+pipeline generator. This is an explicit compatibility adaptation with focused
+CPU scheduler tests; actual checkpoint loading and GPU output remain qualification
+requirements. Do not replace the pipeline or scheduler based only on a class
+name or lower step count.
+
+Focused source checks, without downloading models or using a GPU:
+
+```sh
+timeout 30 python3 -B tests/test_generate.py
+timeout 30 python3 -B tests/test_generate_runtime.py
+timeout 60 python3 -B tests/test_publish.py
+```
+
+The runtime check needs the pinned Python packages and PyTorch 2.8; a CPU-only
+PyTorch build suffices for its scheduler and synthetic MP4 round-trip. It is not
+a model inference test. The publisher's existing bounded CPU inspection also
+checks the command, dependencies, notices and FFmpeg executable. No new CI build
+trigger or automatic publication is introduced.
+
 ## Build recipes
 
 The curated Linux amd64 image pins PyTorch 2.8.0 / CUDA 12.8 / cuDNN 9 by its

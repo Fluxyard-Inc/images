@@ -20,9 +20,13 @@ REPO = "Fluxyard-Inc/images"
 SOURCE = "https://github.com/" + REPO
 NAMES = ("workspace", "workspace-custom")
 INPUTS = ("Dockerfile", "requirements.lock", "models.lock.json", "THIRD_PARTY.md",
-          "examples/workload.py", "examples/requirements.lock", "examples/data/train.txt",
+          "examples/workload.py", "examples/generate.py", "examples/requirements.lock", "examples/data/train.txt",
           "examples/data/eval.txt", "examples/data/prompt.txt", "examples/data/image.json",
-          "custom/Dockerfile", "custom/run.py")
+          "custom/Dockerfile", "custom/run.py", "licenses/sentencepiece/README.md",
+          "licenses/sentencepiece/LICENSE", "licenses/sentencepiece/third_party/absl/LICENSE",
+          "licenses/sentencepiece/third_party/darts_clone/LICENSE",
+          "licenses/sentencepiece/third_party/esaxx/LICENSE",
+          "licenses/sentencepiece/third_party/protobuf-lite/LICENSE")
 SHA = r"[0-9a-f]{40}"
 DIGEST = r"sha256:[0-9a-f]{64}"
 LIMIT = 2 * 1024 * 1024
@@ -39,6 +43,7 @@ import shutil
 import subprocess
 import sys
 import torch, transformers, diffusers, safetensors, venv
+import accelerate, imageio, imageio_ffmpeg, sentencepiece
 assert torch.__version__.split('+')[0] == '2.8.0'
 assert torch.version.cuda == '12.8'
 assert metadata.version('nvidia-cudnn-cu12') == '9.10.2.21'
@@ -48,18 +53,28 @@ for line in Path('/opt/fluxyard/requirements.lock').read_text().splitlines():
     if line and not line.startswith('#'):
         name, version = line.split()[0].split('==')
         assert metadata.version(name) == version
-for package in ('torch', 'transformers', 'diffusers', 'nvidia-cudnn-cu12'):
+for package in ('torch', 'transformers', 'diffusers', 'nvidia-cudnn-cu12',
+                'accelerate', 'imageio', 'imageio-ffmpeg', 'protobuf', 'psutil'):
     distribution = metadata.distribution(package)
-    notices = [p for p in distribution.files or () if 'license' in p.name.lower()]
+    notices = [p for p in distribution.files or ()
+               if any(name in p.name.lower() for name in ('license', 'copying', 'notice'))]
     assert notices and all(distribution.locate_file(p).is_file() for p in notices)
     assert any(distribution.locate_file(p).stat().st_size for p in notices)
+# SentencePiece's 0.2.1 wheel omits standalone license files. Carry its exact
+# upstream license and bundled third-party notices separately in the image.
+for name in ('LICENSE', 'third_party/absl/LICENSE', 'third_party/darts_clone/LICENSE',
+             'third_party/esaxx/LICENSE', 'third_party/protobuf-lite/LICENSE'):
+    assert (Path('/opt/fluxyard/licenses/sentencepiece') / name).stat().st_size
 for package in ('openssh-sftp-server', 'tmux', 'curl', 'coreutils'):
     assert (Path('/usr/share/doc') / package / 'copyright').stat().st_size
-for tool in ('bash', 'curl', 'tmux', 'sha256sum'):
+for tool in ('bash', 'curl', 'tmux', 'sha256sum', 'fluxyard-generate'):
     assert shutil.which(tool)
 assert Path('/usr/lib/openssh/sftp-server').is_file()
 assert Path('/opt/fluxyard/THIRD_PARTY.md').stat().st_size
 assert Path('/opt/fluxyard/examples/workload.py').is_file()
+assert Path('/opt/fluxyard/models.lock.json').is_file()
+subprocess.run(['fluxyard-generate', '--help'], check=True, timeout=10)
+subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), '-version'], check=True, timeout=10)
 subprocess.run([sys.executable, '-m', 'pip', 'check'], check=True, timeout=45)
 print('image-validation-ok')
 '''

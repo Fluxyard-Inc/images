@@ -37,7 +37,11 @@ ENV HOME=/workspace \
     PYTHONUNBUFFERED=1
 
 COPY examples /opt/fluxyard/examples
+COPY models.lock.json /opt/fluxyard/models.lock.json
 COPY THIRD_PARTY.md /opt/fluxyard/THIRD_PARTY.md
+COPY licenses /opt/fluxyard/licenses
+RUN chmod 0555 /opt/fluxyard/examples/generate.py && \
+    ln -s /opt/fluxyard/examples/generate.py /usr/local/bin/fluxyard-generate
 
 # Runtime mounts empty quota scratch here with volume-nocopy. Bake code under
 # /opt/fluxyard or transfer it with SFTP; never put required image files here.

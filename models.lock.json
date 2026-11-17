@@ -5,14 +5,55 @@
       "revision": "2290a62682d06624634c1f46a6ad5be0f47f38aa",
       "declared_license": "apache-2.0",
       "model_card": "https://huggingface.co/distilbert/distilgpt2/blob/2290a62682d06624634c1f46a6ad5be0f47f38aa/README.md",
-      "use_cases": ["training", "inference"]
+      "use_cases": [
+        "training",
+        "inference"
+      ]
     },
     {
       "model_id": "google/ddpm-cifar10-32",
       "revision": "267b167dc01f0e4e61923ea244e8b988f84deb80",
       "declared_license": "apache-2.0",
       "model_card": "https://huggingface.co/google/ddpm-cifar10-32/blob/267b167dc01f0e4e61923ea244e8b988f84deb80/README.md",
-      "use_cases": ["image_generation"]
+      "use_cases": [
+        "image_generation"
+      ]
+    },
+    {
+      "model_id": "Tongyi-MAI/Z-Image-Turbo",
+      "revision": "f332072aa78be7aecdf3ee76d5c247082da564a6",
+      "declared_license": "apache-2.0",
+      "model_card": "https://huggingface.co/Tongyi-MAI/Z-Image-Turbo/blob/f332072aa78be7aecdf3ee76d5c247082da564a6/README.md",
+      "use_cases": [
+        "text_to_image"
+      ],
+      "generation_role": "image"
+    },
+    {
+      "model_id": "Lightricks/LTX-Video",
+      "revision": "8984fa25007f376c1a299016d0957a37a2f797bb",
+      "filename": "ltxv-2b-0.9.6-distilled-04-25.safetensors",
+      "sha256": "94891bd4bd08de30d484befbfc54fdcffe6d1596a131baad700b9baa5e1de86b",
+      "declared_license": "LTX-Video Open Weights License 0.X (custom)",
+      "license_filename": "LTX-Video-Open-Weights-License-0.X.txt",
+      "model_card": "https://huggingface.co/Lightricks/LTX-Video/blob/8984fa25007f376c1a299016d0957a37a2f797bb/README.md",
+      "license_url": "https://huggingface.co/Lightricks/LTX-Video/blob/8984fa25007f376c1a299016d0957a37a2f797bb/LTX-Video-Open-Weights-License-0.X.txt",
+      "use_cases": [
+        "text_to_video",
+        "image_to_video"
+      ],
+      "generation_role": "video"
+    },
+    {
+      "model_id": "Lightricks/LTX-Video-0.9.5",
+      "revision": "e58e28c39631af4d1468ee57a853764e11c1d37e",
+      "declared_license": "Open RAIL-M (see accompanying terms)",
+      "model_card": "https://huggingface.co/Lightricks/LTX-Video-0.9.5/blob/e58e28c39631af4d1468ee57a853764e11c1d37e/README.md",
+      "license_url": "https://huggingface.co/Lightricks/LTX-Video-0.9.5/blob/e58e28c39631af4d1468ee57a853764e11c1d37e/ltx-video-2b-v0.9.5.license.txt",
+      "use_cases": [
+        "video_configuration_and_text_encoder"
+      ],
+      "generation_role": "video_config"
     }
   ]
 }

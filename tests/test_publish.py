@@ -77,6 +77,8 @@ if tool == "docker":
         archive = tarfile.open(fileobj=io.BytesIO(data))
         names = archive.getnames()
         assert "Dockerfile" in names and "THIRD_PARTY.md" in names
+        assert "examples/generate.py" in names and "models.lock.json" in names
+        assert "licenses/sentencepiece/LICENSE" in names
         assert not any(n.startswith(".git") or "private" in n for n in names)
         assert "unrelated.txt" not in names
         assert not any(b"synthetic-job-token" in archive.extractfile(m).read() for m in archive if m.isfile())
@@ -141,6 +143,7 @@ class PublisherCLI(unittest.TestCase):
             "custom/Dockerfile": "ARG WORKSPACE_IMAGE\nFROM ${WORKSPACE_IMAGE}\n",
             "custom/run.py": "print('custom')\n",
             "examples/workload.py": "print('work')\n",
+            "examples/generate.py": "print('generate')\n",
             "examples/requirements.lock": "example==1 --hash=sha256:" + "b" * 64 + "\n",
             "examples/data/train.txt": "Synthetic training text.\n",
             "examples/data/eval.txt": "Synthetic evaluation text.\n",
@@ -149,6 +152,12 @@ class PublisherCLI(unittest.TestCase):
             "requirements.lock": "example==1 --hash=sha256:" + "b" * 64 + "\n",
             "models.lock.json": '{"models": []}\n',
             "THIRD_PARTY.md": "Synthetic notice fixture.\n",
+            "licenses/sentencepiece/README.md": "Synthetic license source.\n",
+            "licenses/sentencepiece/LICENSE": "Synthetic license.\n",
+            "licenses/sentencepiece/third_party/absl/LICENSE": "Synthetic license.\n",
+            "licenses/sentencepiece/third_party/darts_clone/LICENSE": "Synthetic license.\n",
+            "licenses/sentencepiece/third_party/esaxx/LICENSE": "Synthetic license.\n",
+            "licenses/sentencepiece/third_party/protobuf-lite/LICENSE": "Synthetic license.\n",
             "unrelated.txt": "Not an approved build input.\n",
         }.items():
             path = self.repo / name
